@@ -1,6 +1,7 @@
 import { KnownModel, ollamaInference } from "../modules/ollama";
 import { groqRequest } from "../modules/groq-llama3";
 import { gptRequest } from "../modules/openai";
+import { deepseekRequest } from "../modules/deepseek";
 
 
 export async function imageDescription(src: Uint8Array, model: KnownModel = 'moondream:1.8b-v2-fp16'): Promise<string> {
@@ -29,6 +30,24 @@ export async function llamaFind(question: string, images: string): Promise<strin
                 DO NOT try to generalize or provide possible scenarios.
                 ONLY use the information in the description of the images to answer the question.
                 BE concise and specific.
+            `
+        ,
+            question
+    );
+}
+
+export async function deepseekFind(question: string, images: string): Promise<string> {
+    return deepseekRequest(
+             `
+                你是一个智能 AI，需要根据图片的文字描述来回答用户的问题。
+
+                以下是提供的图片描述：
+                ${images}
+
+                不要提及图片、场景或描述本身，只回答问题。
+                不要臆测或提供假设性场景。
+                只使用图片描述中的信息来回答问题。
+                保持简洁和具体。用中文回答。
             `
         ,
             question

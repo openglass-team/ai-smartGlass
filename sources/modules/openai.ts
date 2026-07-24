@@ -101,24 +101,3 @@ export async function gptRequest(systemPrompt: string, userPrompt: string) {
         return null; // or handle error differently
     }
 }
-
-
-textToSpeech("Hello I am an agent")
-console.info(gptRequest(
-    `
-                You are a smart AI that need to read through description of a images and answer user's questions.
-
-                This are the provided images:
-                The image features a woman standing in an open space with a metal roof, possibly at a train station or another large building.
-                She is wearing a hat and appears to be looking up towards the sky.
-                The scene captures her attention as she gazes upwards, perhaps admiring something above her or simply enjoying the view from this elevated position.
-
-                DO NOT mention the images, scenes or descriptions in your answer, just answer the question.
-                DO NOT try to generalize or provide possible scenarios.
-                ONLY use the information in the description of the images to answer the question.
-                BE concise and specific.
-            `
-        ,
-            'where is the person?'
-
-))

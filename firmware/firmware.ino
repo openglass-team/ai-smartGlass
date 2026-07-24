@@ -398,6 +398,8 @@ void loop() {
   // Read from mic
   size_t bytes_recorded = read_microphone();
 
+  // ====== 临时关闭音频发送，验证是否为音频导致照片丢包 ======
+  /*
   // Push audio to BLE
   if (bytes_recorded > 0 && connected)
   {
@@ -445,6 +447,8 @@ void loop() {
     }
 #endif
   }
+  */
+  // ====== 音频发送结束 ======
 
   // Take a photo
   unsigned long now = millis();

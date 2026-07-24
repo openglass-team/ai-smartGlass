@@ -14,41 +14,52 @@ function usePhotos(device: BluetoothRemoteGATTServer) {
     React.useEffect(() => {
         (async () => {
 
-            let previousChunk = -1;
-            let buffer: Uint8Array = new Uint8Array(0);
-            function onChunk(id: number | null, data: Uint8Array) {
+            // 缓冲桶模式：把所有收到的包存进 Map，收到结束标记后拼装
+            const CHUNK_SIZE = 200; // 固件端每个 chunk 最多 200 字节
+            let chunkMap = new Map<number, Uint8Array>();
+            let maxChunkId = 0;
 
-                // Resolve if packet is the first one
-                if (previousChunk === -1) {
-                    if (id === null) {
-                        return;
-                    } else if (id === 0) {
-                        previousChunk = 0;
-                        buffer = new Uint8Array(0);
-                    } else {
-                        return;
-                    }
-                } else {
-                    if (id === null) {
-                        console.log('Photo received', buffer);
-                        rotateImage(buffer, '270').then((rotated) => {
-                            console.log('Rotated photo', rotated);
-                            setPhotos((p) => [...p, rotated]);
-                        });
-                        previousChunk = -1;
-                        return;
-                    } else {
-                        if (id !== previousChunk + 1) {
-                            previousChunk = -1;
-                            console.error('Invalid chunk', id, previousChunk);
-                            return;
+            function assemblePhoto() {
+                if (chunkMap.size === 0) return;
+
+                // 按包序号排序
+                const sortedIds = Array.from(chunkMap.keys()).sort((a, b) => a - b);
+
+                // 检测缺包
+                const gaps: number[] = [];
+                for (let i = 0; i < sortedIds.length - 1; i++) {
+                    if (sortedIds[i + 1] - sortedIds[i] > 1) {
+                        for (let g = sortedIds[i] + 1; g < sortedIds[i + 1]; g++) {
+                            gaps.push(g);
                         }
-                        previousChunk = id;
                     }
                 }
+                if (gaps.length > 0) {
+                    console.warn('Missing chunks:', gaps.length, 'IDs:', gaps.slice(0, 10), gaps.length > 10 ? '...' : '');
+                }
 
-                // Append data
-                buffer = new Uint8Array([...buffer, ...data]);
+                // 按 chunk ID 计算正确的字节偏移来拼接
+                // 每个 chunk 在原 JPEG 中的位置 = chunkId * CHUNK_SIZE
+                // 最后一个 chunk 可能小于 CHUNK_SIZE
+                const lastId = sortedIds[sortedIds.length - 1];
+                const estimatedTotalSize = lastId * CHUNK_SIZE + chunkMap.get(lastId)!.length;
+                const fullBuffer = new Uint8Array(estimatedTotalSize);
+
+                for (const id of sortedIds) {
+                    const chunk = chunkMap.get(id)!;
+                    const byteOffset = id * CHUNK_SIZE;
+                    fullBuffer.set(chunk, byteOffset);
+                }
+
+                console.log('Photo assembled:', fullBuffer.length, 'bytes,', chunkMap.size, 'chunks,', gaps.length, 'gaps');
+                chunkMap.clear();
+                maxChunkId = 0;
+
+                // 打印 JPEG 文件头信息，用于诊断
+                console.log('JPEG header:', Array.from(fullBuffer.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
+                // 🔧 临时：不做旋转，直接显示原图（上箭头观察原始摄像头数据）
+                setPhotos((p) => [...p, fullBuffer]);
             }
 
             // Subscribe for photo updates
@@ -58,13 +69,21 @@ function usePhotos(device: BluetoothRemoteGATTServer) {
             setSubscribed(true);
             photoCharacteristic.addEventListener('characteristicvaluechanged', (e) => {
                 let value = (e.target as BluetoothRemoteGATTCharacteristic).value!;
-                let array = new Uint8Array(value.buffer);
+                // 必须用 byteOffset + byteLength，否则会读到 buffer 中的脏数据
+                let array = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
                 if (array[0] == 0xff && array[1] == 0xff) {
-                    onChunk(null, new Uint8Array());
+                    // 结束标记 → 拼装照片
+                    assemblePhoto();
                 } else {
                     let packetId = array[0] + (array[1] << 8);
                     let packet = array.slice(2);
-                    onChunk(packetId, packet);
+                    // 收到 chunk 0 且有旧数据 → 上一张照片的结束标记丢了，先拼装旧照片
+                    if (packetId === 0 && chunkMap.size > 0) {
+                        console.log('New photo detected, assembling previous');
+                        assemblePhoto();
+                    }
+                    // 直接存入 Map，不检查顺序
+                    chunkMap.set(packetId, packet);
                 }
             });
             // Start automatic photo capture every 5s

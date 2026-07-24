@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { AsyncLock } from "../utils/lock";
-import { imageDescription, llamaFind } from "./imageDescription";
+import { imageDescription, deepseekFind } from "./imageDescription";
 import { startAudio } from '../modules/openai';
 
 type AgentState = {
@@ -58,7 +58,7 @@ export class Agent {
                 combined += p.description;
                 i++;
             }
-            let answer = await llamaFind(question, combined);
+            let answer = await deepseekFind(question, combined);
             this.#state.answer = answer;
             this.#state.loading = false;
             this.#notify();
