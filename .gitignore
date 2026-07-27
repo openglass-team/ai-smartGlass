@@ -1,0 +1,10 @@
+node_modules
+build
+dist
+.expo
+.env
+.vscode
+
+# Qt
+QtGlassDemo/build/
+*.pro.user
