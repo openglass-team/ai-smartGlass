@@ -14,6 +14,23 @@ function usePhotos(device: BluetoothRemoteGATTServer) {
     React.useEffect(() => {
         (async () => {
 
+            // ---- WebSocket 连接 Qt 桌面端 ----
+            let ws: WebSocket | null = null;
+            function connectWS() {
+                ws = new WebSocket('ws://localhost:9000');
+                ws.binaryType = 'arraybuffer';
+                ws.onopen = () => console.log('[WS] Connected to Qt');
+                ws.onclose = () => { console.log('[WS] Disconnected, retrying in 2s...'); setTimeout(connectWS, 2000); };
+                ws.onerror = () => { /* Qt server might not be running yet */ };
+            }
+            connectWS();
+
+            function sendToQt(jpeg: Uint8Array) {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(jpeg.buffer);
+                }
+            }
+
             // 缓冲桶模式：把所有收到的包存进 Map，收到结束标记后拼装
             const CHUNK_SIZE = 200; // 固件端每个 chunk 最多 200 字节
             let chunkMap = new Map<number, Uint8Array>();
@@ -55,10 +72,11 @@ function usePhotos(device: BluetoothRemoteGATTServer) {
                 chunkMap.clear();
                 maxChunkId = 0;
 
-                // 打印 JPEG 文件头信息，用于诊断
                 console.log('JPEG header:', Array.from(fullBuffer.slice(0, 8)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
 
-                // 🔧 临时：不做旋转，直接显示原图（上箭头观察原始摄像头数据）
+                // 发送到 Qt 桌面端
+                sendToQt(fullBuffer);
+
                 setPhotos((p) => [...p, fullBuffer]);
             }
 

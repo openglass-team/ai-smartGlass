@@ -1,90 +1,94 @@
-## ℹ️ 🔴 We moved this project to [Omi repository](https://github.com/BasedHardware/omi). Current repo isn't supported anymore =>
-## ℹ️ 🔴 We moved this project to [Omi repository](https://github.com/BasedHardware/omi). Current repo isn't supported anymore =>
-## ℹ️ 🔴 We moved this project to [Omi repository](https://github.com/BasedHardware/omi). Current repo isn't supported anymore =>
+# AI Smart Glass
 
-# OpenGlass - Open Source Smart Glasses
+基于 ESP32 与 Qt/C++ 的 AI 智能眼镜桌面客户端。
 
-Turn any glasses into hackable smart glasses with less than $25 of off-the-shelf components. Record your life, remember people you meet, identify objects, translate text, and more.
+---
 
-![OpenGlass](https://github.com/BasedHardware/OpenGlass/assets/43514161/2fdc9d9d-2206-455c-ba60-10dbd6fb3dfb)
+## 系统架构
 
+```
+ESP32 (眼镜) ──BLE──→ Python 桥接 ──WebSocket──→ Qt 桌面端
+ 拍照/录音              ble_bridge.py             照片显示/AI分析/截图保存
+```
 
-## Video Demo
+---
 
-[![OpenGlass Demo](https://img.youtube.com/vi/DsM_-c2e1ew/0.jpg)](https://youtu.be/DsM_-c2e1ew)
+## 功能
 
-## Want a Pre-built Version?
+- 🔗 **BLE 蓝牙直连**：无需浏览器，Qt 自动连接眼镜
+- 📸 **实时预览**：照片自动显示在 Qt 桌面窗口
+- 💾 **一键截图**：随时保存当前画面
+- 🤖 **AI 识图**：Ollama 本地视觉模型 + DeepSeek 云端问答
+- 📁 **照片管理**：截图统一保存至 `photos/` 目录
 
-We will ship a limited number of pre-built kits. Fill out the [interest form](https://basedhardware.com/openglass) to get notified.
+---
 
-## Community
+## 硬件要求
 
-Join the [Based Hardware Discord](https://discord.com/invite/ZutWMTJnwA) for setup questions, contribution guide, and more.
+| 组件 | 型号 |
+|------|------|
+| 主控 | Seeed Studio XIAO ESP32S3 Sense |
+| 电池 | EEMB LP502030 3.7V 250mAh |
+| 支架 | 3D 打印眼镜支架 |
 
-## Getting Started
+---
 
-Follow these steps to set up OpenGlass:
+## 快速开始
 
-### Hardware
+### 1. 安装依赖
 
-1. Gather the required components:
-   - [Seeed Studio XIAO ESP32 S3 Sense](https://www.amazon.com/dp/B0C69FFVHH/ref=dp_iou_view_item?ie=UTF8&psc=1)
-   - [EEMB LP502030 3.7v 250mAH battery](https://www.amazon.com/EEMB-Battery-Rechargeable-Lithium-Connector/dp/B08VRZTHDL)
-   - [3D printed glasses mount case](https://storage.googleapis.com/scott-misc/openglass_case.stl)
+- Python 3.11+ + `bleak` `websockets`
+- Qt 6.8+ (MinGW 64-bit + Qt Connectivity 模块)
+- Ollama (本地 AI 视觉模型)
 
-2. 3D print the glasses mount case using the provided STL file.
+```bash
+pip install bleak websockets
+ollama pull moondream:1.8b-v2-fp16
+```
 
-3. Open the [firmware folder](https://github.com/BasedHardware/openglass/tree/main/firmware) and open the `.ino` file in the Arduino IDE.
-   - If you don't have the Arduino IDE installed, download and install it from the [official website](https://www.arduino.cc/en/software).
-   - Alternatively, follow the steps in the [firmware readme](firmware/readme.md) to build using `arduino-cli`
+### 2. 烧录固件
 
-4. Follow the software preparation steps to set up the Arduino IDE for the XIAO ESP32S3 board:
-   - Add ESP32 board package to your Arduino IDE:
-     - Navigate to File > Preferences, and fill "Additional Boards Manager URLs" with the URL: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
-     - Navigate to Tools > Board > Boards Manager..., type the keyword `esp32` in the search box, select the latest version of `esp32`, and install it.
-   - Select your board and port:
-     - On top of the Arduino IDE, select the port (likely to be COM3 or higher).
-     - Search for `xiao` in the development board on the left and select `XIAO_ESP32S3`.
+用 Arduino IDE 打开 `firmware/firmware.ino`，设置 **PSRAM: OPI PSRAM**，上传至 XIAO ESP32S3。
 
-5. Before you flash go to the "Tools" drop down in the Arduino IDE and make sure you set "PSRAM:" to be "PSRAM: "OPI PSRAM"
+### 3. 运行 Qt 桌面端
 
-![Like this](image.png)
+Qt Creator 打开 `QtGlassDemo/QtGlassDemo.pro` → 编译运行。
 
-6. Upload the firmware to the XIAO ESP32S3 board.
+Qt 会自动拉起 BLE 桥接，连接眼镜后即可显示照片。
 
-### Software
+---
 
-1. Clone the OpenGlass repository and install the dependencies:
-   ```
-   git clone https://github.com/BasedHardware/openglass.git
-   cd openglass
-   npm install
-   ```
-   You can also use **yarn** to install, by doing
-   ```
-   yarn install
-   ```
+## 项目结构
 
-3. Add API keys for Groq and OpenAI in the `keys.ts` file located at [https://github.com/BasedHardware/OpenGlass/blob/main/sources/keys.ts](https://github.com/BasedHardware/OpenGlass/blob/main/sources/keys.ts).
+```
+├── firmware/                # ESP32 固件 (Arduino)
+│   ├── firmware.ino
+│   └── readme.md
+├── sources/                 # Web 端源码 (React Native / 调试用)
+│   ├── agent/               # AI 代理
+│   ├── app/                 # 界面组件
+│   └── modules/             # AI 模块 (Ollama/DeepSeek/OpenAI)
+├── QtGlassDemo/             # Qt 桌面端 (主力)
+│   ├── mainwindow.h/cpp     # 主窗口 + WebSocket 服务器
+│   ├── ble_bridge.py        # BLE 蓝牙桥接 (Python)
+│   ├── scan_test.py         # BLE 扫描测试工具
+│   └── ble_test.py          # BLE 连接测试工具
+└── photos/                  # 截图保存目录
+```
 
-4. For Ollama, self-host the REST API from the repository at [https://github.com/ollama/ollama](https://github.com/ollama/ollama) and add the URL to the `keys.ts` file. The URL should be http://localhost:11434/api/chat
-5. go to terminal and type "ollama pull moondream:1.8b-v2-fp16"
+---
 
+## 团队协作
 
-6. Start the application:
-   ```
-   npm start
-   ```
+```bash
+git clone git@github.com:openglass-team/ai-smartGlass.git
+git checkout -b feature/你的模块名
+```
 
-   If using **yarn** start the application with
-   ```
-   yarn start
-   ```
+分支命名：`feature/firmware` `feature/ai` `feature/qt` `feature/hardware`
 
-   Note: This is an Expo project. For now, open the localhost link (this will appear after completing step 5) to access the web version.
+---
 
 ## License
 
-This project is licensed under the MIT License.
-
-## [ℹ️ 🔴 We moved this project to Omi repository. Current repo isn't supported anymore =>](https://github.com/BasedHardware/Omi)
+MIT
