@@ -240,15 +240,9 @@ void configure_ble() {
   advertising->addServiceUUID(DEVICE_INFORMATION_SERVICE_UUID);
   advertising->addServiceUUID(service->getUUID());
   advertising->setScanResponse(true);
-  advertising->setMinPreferred(0x06);   // 7.5ms 最小间隔
-  advertising->setMaxPreferred(0x0C);   // 15ms 最大间隔
-
-  // 更长连接间隔 = 更稳定（牺牲一点速度）
-  // advertising->setMinPreferred(0x0C);
-  // advertising->setMaxPreferred(0x18);
-
+  advertising->setMinPreferred(0x30);   // 60ms min
+  advertising->setMaxPreferred(0x40);   // 80ms max
   BLEDevice::getAdvertising()->start();
-  Serial.println("BLE Advertising...");
 }
 
 camera_fb_t *fb;
@@ -448,12 +442,17 @@ void setup() {
 }
 
 void loop() {
+  static unsigned long last_audio_send = 0;
+
   // Read from mic
   size_t bytes_recorded = read_microphone();
 
-  // Push audio to BLE
+  // Push audio to BLE — 每 50ms 发一次，避免冲刷 Windows BLE 栈
   if (bytes_recorded > 0 && connected)
   {
+    unsigned long now_loop = millis();
+    if (now_loop - last_audio_send < 50) goto skip_audio;
+    last_audio_send = now_loop;
 #ifdef CODEC_OPUS
     int16_t samples[FRAME_SIZE];
     for (size_t i = 0; i < bytes_recorded; i += 2)
@@ -498,6 +497,7 @@ void loop() {
     }
 #endif
   }
+  skip_audio: ;
 
   // Take a photo
   unsigned long now = millis();
