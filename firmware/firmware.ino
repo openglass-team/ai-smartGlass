@@ -244,9 +244,8 @@ void configure_ble() {
   advertising->addServiceUUID(DEVICE_INFORMATION_SERVICE_UUID);
   advertising->addServiceUUID(service->getUUID());
   advertising->setScanResponse(true);
-  advertising->setMinPreferred(0x30);
-  advertising->setMaxPreferred(0x40);
-
+  advertising->setMinPreferred(0x0C);
+  advertising->setMaxPreferred(0x18);
   BLEDevice::getAdvertising()->start();
   Serial.println("BLE Advertising...");
 }
