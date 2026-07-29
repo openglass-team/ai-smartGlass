@@ -149,6 +149,9 @@ void configure_ble() {
   BLEDevice::init("OpenGlass");
   BLEServer *server = BLEDevice::createServer();
 
+  // 设置 BLE 连接参数 — 稳定版 (60-80ms 连接间隔)
+  server->setCallbacks(new ServerHandler());
+
   // Main service
 
   BLEService *service = server->createService(serviceUUID);
@@ -241,12 +244,8 @@ void configure_ble() {
   advertising->addServiceUUID(DEVICE_INFORMATION_SERVICE_UUID);
   advertising->addServiceUUID(service->getUUID());
   advertising->setScanResponse(true);
-  advertising->setMinPreferred(0x06);   // 7.5ms 最小间隔
-  advertising->setMaxPreferred(0x0C);   // 15ms 最大间隔
-
-  // 更长连接间隔 = 更稳定（牺牲一点速度）
-  // advertising->setMinPreferred(0x0C);
-  // advertising->setMaxPreferred(0x18);
+  advertising->setMinPreferred(0x30);
+  advertising->setMaxPreferred(0x40);
 
   BLEDevice::getAdvertising()->start();
   Serial.println("BLE Advertising...");
@@ -448,9 +447,9 @@ void setup() {
     wifiAudio.begin(wcfg);
   }
 
-  // 启动骨传导喇叭
+  // 启动骨传导喇叭（默认静音，TTS 触发时才发声）
   if (speaker.begin(BoneSpeaker::Config())) {
-    // speaker.tone(1000, 300);
+    speaker.mute();  // 默认静音，等待 TTS 数据
     Serial.println("BoneSpeaker OK");
   } else {
     Serial.println("BoneSpeaker FAILED");
