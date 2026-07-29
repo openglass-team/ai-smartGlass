@@ -458,10 +458,19 @@ void setup() {
 }
 
 void loop() {
-  static unsigned long last_audio_ms = 0;
+  static unsigned long last_beep_ms = 0;
 
-  // WiFi 音频桥接 (WiFi TCP 已禁用)
-  // wifiAudio.loop();
+  // === 测试：每 5 秒响一下 0.2 秒 1kHz 提示音 ===
+  unsigned long now_ms = millis();
+  if (now_ms - last_beep_ms >= 5000) {
+    last_beep_ms = now_ms;
+    speaker.unmute();
+    speaker.tone(1000, 200);
+    speaker.mute();
+  }
+
+  // === 以下原始逻辑保留但跳过 ===
+  return;
 
   // Read from mic
   size_t bytes_recorded = read_microphone();
