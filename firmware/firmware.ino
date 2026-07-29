@@ -441,7 +441,7 @@ void setup() {
     WifiAudio::Config wcfg;
     wcfg.ssid     = "S21";
     wcfg.password = "12345678";
-    wcfg.host     = "192.168.1.100";  // TODO: 改成你电脑的 IP
+    wcfg.host     = "192.168.2.3";  // 你电脑的 Wi-Fi IP
     wcfg.port     = 8888;
     wifiAudio.begin(wcfg);
   }
