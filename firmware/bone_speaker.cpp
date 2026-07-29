@@ -41,23 +41,14 @@ bool BoneSpeaker::begin(const Config& cfg) {
         return false;
     }
 
-    // 设置 I2S 引脚
-    i2s_pin_config_t pin_cfg = {};
-    pin_cfg.bck_io_num   = _cfg.bclk_pin;
-    pin_cfg.ws_io_num    = _cfg.lrc_pin;
-    pin_cfg.data_out_num = _cfg.din_pin;
-    pin_cfg.data_in_num  = I2S_PIN_NO_CHANGE;
-
-    err = i2s_set_pin(I2S_NUM_1, &pin_cfg);
-    if (err != ESP_OK) {
-        Serial.printf("BoneSpeaker: i2s_set_pin() failed: %d\n", err);
-        i2s_driver_uninstall(I2S_NUM_1);
-        return false;
+    // SD 引脚：拉低关闭功放，彻底防噪音
+    if (_cfg.sd_pin >= 0) {
+        pinMode(_cfg.sd_pin, OUTPUT);
+        digitalWrite(_cfg.sd_pin, LOW);  // 上电默认关闭
     }
 
-    // 启动前先静音（填充零数据帧）
-    i2s_zero_dma_buffer(I2S_NUM_1);
-    mute();
+    // 启动 I2S 前先把 SD 拉低
+    delay(10);
 
     _ready = true;
     Serial.println("BoneSpeaker: I2S1 初始化成功");
@@ -130,6 +121,9 @@ void BoneSpeaker::write(const int16_t* samples, size_t count) {
 // ---------------------------------------------------------------------------
 void BoneSpeaker::mute() {
     _muted = true;
+    if (_cfg.sd_pin >= 0) {
+        digitalWrite(_cfg.sd_pin, LOW);  // 硬件关断 MAX98357A
+    }
     if (_ready) {
         i2s_zero_dma_buffer(I2S_NUM_1);
     }
@@ -137,4 +131,7 @@ void BoneSpeaker::mute() {
 
 void BoneSpeaker::unmute() {
     _muted = false;
+    if (_cfg.sd_pin >= 0) {
+        digitalWrite(_cfg.sd_pin, HIGH);  // 硬件启用 MAX98357A
+    }
 }

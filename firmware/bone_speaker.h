@@ -26,6 +26,7 @@ public:
         int sample_rate    = 16000;
         int bits_per_sample = 16;    // 16-bit 采样
         int buffer_count   = 4;    // DMA 缓冲区数量
+        int sd_pin         = 7;    // SD shutdown 控制 (D6,高=工作,低=关闭)
         int buffer_samples = 256;  // 每个 DMA 缓冲区的采样数
     };
 

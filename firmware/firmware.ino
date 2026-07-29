@@ -448,8 +448,10 @@ void setup() {
 
   // 启动骨传导喇叭（默认静音，TTS 触发时才发声）
   if (speaker.begin(BoneSpeaker::Config())) {
-    speaker.mute();  // 默认静音，等待 TTS 数据
-    Serial.println("BoneSpeaker OK");
+    speaker.mute();       // 软件静音
+    delay(50);            // 等 I2S DMA 稳定
+    speaker.mute();       // 二次确认静音
+    Serial.println("BoneSpeaker OK (muted)");
   } else {
     Serial.println("BoneSpeaker FAILED");
   }
