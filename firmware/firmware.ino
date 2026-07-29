@@ -109,12 +109,17 @@ class ServerHandler : public BLEServerCallbacks
   void onConnect(BLEServer *server)
   {
     connected = true;
+    Serial.println("BLE Connected");
   }
 
   void onDisconnect(BLEServer *server)
   {
     connected = false;
-    BLEDevice::startAdvertising();
+    Serial.println("BLE Disconnected — restarting in 1s");
+    delay(1000);  // 等 1 秒再恢复广播，避免反复连断
+    BLEDevice::getAdvertising()->stop();
+    delay(200);
+    BLEDevice::getAdvertising()->start();
   }
 };
 
@@ -235,9 +240,15 @@ void configure_ble() {
   advertising->addServiceUUID(DEVICE_INFORMATION_SERVICE_UUID);
   advertising->addServiceUUID(service->getUUID());
   advertising->setScanResponse(true);
-  advertising->setMinPreferred(0x06);
-  advertising->setMaxPreferred(0x12);
-  BLEDevice::startAdvertising();
+  advertising->setMinPreferred(0x06);   // 7.5ms 最小间隔
+  advertising->setMaxPreferred(0x0C);   // 15ms 最大间隔
+
+  // 更长连接间隔 = 更稳定（牺牲一点速度）
+  // advertising->setMinPreferred(0x0C);
+  // advertising->setMaxPreferred(0x18);
+
+  BLEDevice::getAdvertising()->start();
+  Serial.println("BLE Advertising...");
 }
 
 camera_fb_t *fb;
