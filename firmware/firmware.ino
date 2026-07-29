@@ -448,12 +448,17 @@ void setup() {
 }
 
 void loop() {
+  static unsigned long last_audio_ms = 0;
+
   // Read from mic
   size_t bytes_recorded = read_microphone();
 
-  // Push audio to BLE
+  // Push audio to BLE — 限制每 80ms 发送一次，保护 Windows BLE 栈
   if (bytes_recorded > 0 && connected)
   {
+    unsigned long now_ms = millis();
+    if (now_ms - last_audio_ms < 80) goto skip_audio;
+    last_audio_ms = now_ms;
 #ifdef CODEC_OPUS
     int16_t samples[FRAME_SIZE];
     for (size_t i = 0; i < bytes_recorded; i += 2)
@@ -498,6 +503,7 @@ void loop() {
     }
 #endif
   }
+  skip_audio:
 
   // Take a photo
   unsigned long now = millis();
