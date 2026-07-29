@@ -8,6 +8,7 @@
 #include "esp_camera.h"
 #include "camera_pins.h"
 #include "mulaw.h"
+#include "bone_speaker.h"
 
 // Audio
 
@@ -74,6 +75,7 @@ static BLEUUID audioDataUUID("19B10001-E8F2-537E-4F6C-D104768A1214");
 static BLEUUID audioCodecUUID("19B10002-E8F2-537E-4F6C-D104768A1214");
 static BLEUUID photoDataUUID("19B10005-E8F2-537E-4F6C-D104768A1214");
 static BLEUUID photoControlUUID("19B10006-E8F2-537E-4F6C-D104768A1214");
+static BLEUUID audioPlaybackUUID("19B10004-E8F2-537E-4F6C-D104768A1214");
 
 BLECharacteristic *audioDataCharacteristic;
 BLECharacteristic *photoDataCharacteristic;
@@ -97,6 +99,8 @@ bool photoDataUploading = false;
 
 uint8_t batteryLevel = 100;
 unsigned long lastBatteryUpdate = 0;
+
+BoneSpeaker speaker;
 
 void handlePhotoControl(int8_t controlValue);
 
@@ -122,6 +126,16 @@ class PhotoControlCallback : public BLECharacteristicCallbacks
     {
       handlePhotoControl(characteristic->getData()[0]);
     }
+  }
+};
+
+class AudioPlaybackCallback : public BLECharacteristicCallbacks
+{
+  void onWrite(BLECharacteristic *characteristic)
+  {
+    size_t len = characteristic->getLength();
+    uint8_t *data = characteristic->getData();
+    speaker.write((int16_t *)data, len / 2);
   }
 };
 
@@ -171,6 +185,12 @@ void configure_ble() {
   photoControlCharacteristic->setCallbacks(new PhotoControlCallback());
   uint8_t controlValue = 0;
   photoControlCharacteristic->setValue(&controlValue, 1);
+
+  // Audio playback (phone/PC -> glass bone speaker)
+  BLECharacteristic *audioPlaybackCharacteristic = service->createCharacteristic(
+      audioPlaybackUUID,
+      BLECharacteristic::PROPERTY_WRITE);
+  audioPlaybackCharacteristic->setCallbacks(new AudioPlaybackCallback());
 
   // Device Information Service
 
@@ -375,9 +395,18 @@ void updateBatteryLevel()
 // static uint8_t *s_compressed_frame_2 = nullptr;
 // static size_t compressed_buffer_size = 400 + 3;
 void setup() {
+  // 启动串口 — 等一会让 USB CDC 稳定
   Serial.begin(921600);
-  // SD.begin(21);
+  delay(2000);
+  Serial.println();
+  Serial.println("=== OpenGlass Booting ===");
+  Serial.print("Free heap: ");
+  Serial.println(ESP.getFreeHeap());
+
+  // BLE
+  Serial.println("Starting BLE...");
   configure_ble();
+  Serial.println("BLE started");
   // s_compressed_frame_2 = (uint8_t *) ps_calloc(compressed_buffer_size, sizeof(uint8_t));
 #ifdef CODEC_OPUS
   int opus_err;
@@ -390,16 +419,27 @@ void setup() {
   }
   opus_encoder_ctl(opus_encoder, OPUS_SET_BITRATE(OPUS_BITRATE));
 #endif
+  Serial.println("Starting microphone...");
   configure_microphone();
+  Serial.println("Mic started");
+  Serial.println("Starting camera...");
   configure_camera();
+  Serial.println("Camera started");
+
+  if (speaker.begin(BoneSpeaker::Config())) {
+    // speaker.tone(1000, 300);  // 关闭启动提示音，太吵
+    Serial.println("BoneSpeaker OK");
+  } else {
+    Serial.println("BoneSpeaker FAILED — continuing without speaker");
+  }
+
+  Serial.println("Setup complete");
 }
 
 void loop() {
   // Read from mic
   size_t bytes_recorded = read_microphone();
 
-  // ====== 临时关闭音频发送 ======
-#if 0
   // Push audio to BLE
   if (bytes_recorded > 0 && connected)
   {
@@ -447,8 +487,6 @@ void loop() {
     }
 #endif
   }
-#endif
-  // ====== 音频发送结束 ======
 
   // Take a photo
   unsigned long now = millis();
