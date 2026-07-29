@@ -21,8 +21,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'QtGlassDemo'))
 
-from ai_pipeline import ai_voice_pipeline
-from bone_pcm import pcm_player
+from ai_pipeline import ai_voice_pipeline, speech_to_text, ai_chat, text_to_speech, mp3_to_pcm
 
 HOST = '0.0.0.0'
 PORT = 8888
