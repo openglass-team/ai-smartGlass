@@ -9,6 +9,7 @@
 #include "camera_pins.h"
 #include "mulaw.h"
 #include "bone_speaker.h"
+#include "wifi_audio.h"
 
 // Audio
 
@@ -437,11 +438,22 @@ void setup() {
   configure_camera();
   Serial.println("Camera started");
 
+  // 启动 WiFi TCP 音频桥接
+  {
+    WifiAudio::Config wcfg;
+    wcfg.ssid     = "S21";
+    wcfg.password = "12345678";
+    wcfg.host     = "192.168.1.100";  // TODO: 改成你电脑的 IP
+    wcfg.port     = 8888;
+    wifiAudio.begin(wcfg);
+  }
+
+  // 启动骨传导喇叭
   if (speaker.begin(BoneSpeaker::Config())) {
-    // speaker.tone(1000, 300);  // 关闭启动提示音，太吵
+    // speaker.tone(1000, 300);
     Serial.println("BoneSpeaker OK");
   } else {
-    Serial.println("BoneSpeaker FAILED — continuing without speaker");
+    Serial.println("BoneSpeaker FAILED");
   }
 
   Serial.println("Setup complete");
@@ -450,14 +462,29 @@ void setup() {
 void loop() {
   static unsigned long last_audio_ms = 0;
 
+  // WiFi 音频桥接
+  wifiAudio.loop();
+
   // Read from mic
   size_t bytes_recorded = read_microphone();
 
-  // Push audio to BLE — 限制每 80ms 发送一次，保护 Windows BLE 栈
-  if (bytes_recorded > 0 && connected)
+  // WiFi 音频上行: 每隔 80ms 发送一包到 PC
+  if (bytes_recorded > 0 && wifiAudio.is_connected())
   {
     unsigned long now_ms = millis();
-    if (now_ms - last_audio_ms < 80) goto skip_audio;
+    if (now_ms - last_audio_ms >= 80) {
+      last_audio_ms = now_ms;
+      wifiAudio.send_mic_pcm(s_recording_buffer, bytes_recorded);
+    }
+  }
+
+  // BLE 音频 (暂时关闭，WiFi 音频已替代)
+#if 0
+
+  // Push audio to BLE — max one notify every 80ms (safe for Windows BLE)
+  unsigned long now_ms = millis();
+  if (bytes_recorded > 0 && connected && now_ms - last_audio_ms >= 80)
+  {
     last_audio_ms = now_ms;
 #ifdef CODEC_OPUS
     int16_t samples[FRAME_SIZE];
@@ -503,7 +530,9 @@ void loop() {
     }
 #endif
   }
-  skip_audio:
+  // Upload not done yet
+  }
+#endif /* BLE audio */
 
   // Take a photo
   unsigned long now = millis();
