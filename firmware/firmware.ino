@@ -441,9 +441,7 @@ void setup() {
     WifiAudio::Config wcfg;
     wcfg.ssid     = "S21";
     wcfg.password = "12345678";
-    wcfg.host     = "192.168.2.3";  // 你电脑的 Wi-Fi IP
-    wcfg.port     = 8888;
-    wifiAudio.begin(wcfg);
+    // wifiAudio.begin(wcfg);  // 暂时禁用 WiFi TCP
   }
 
   // 启动骨传导喇叭（默认静音，TTS 触发时才发声）
@@ -462,13 +460,14 @@ void setup() {
 void loop() {
   static unsigned long last_audio_ms = 0;
 
-  // WiFi 音频桥接
-  wifiAudio.loop();
+  // WiFi 音频桥接 (WiFi TCP 已禁用)
+  // wifiAudio.loop();
 
   // Read from mic
   size_t bytes_recorded = read_microphone();
 
-  // WiFi 音频上行: 每隔 80ms 发送一包到 PC
+  // WiFi 音频上行: 已禁用
+#if 0
   if (bytes_recorded > 0 && wifiAudio.is_connected())
   {
     unsigned long now_ms = millis();
@@ -477,6 +476,7 @@ void loop() {
       wifiAudio.send_mic_pcm(s_recording_buffer, bytes_recorded);
     }
   }
+#endif
 
   // BLE 音频 (暂时关闭，WiFi 音频已替代)
 #if 0
