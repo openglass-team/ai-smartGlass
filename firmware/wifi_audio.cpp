@@ -29,7 +29,13 @@ bool WifiAudio::begin(const Config &cfg) {
     int status = WiFi.status();
     Serial.printf("[WiFi] 4/4 Status=%d\n", status);
     if (status != WL_CONNECTED) {
-        Serial.printf("[WiFi] FAILED (status=%d) — SSID correct? Password correct?\n", status);
+        if (status == WL_CONNECT_FAILED || status == WL_NO_SSID_AVAIL)
+            Serial.println("[WiFi] Wrong SSID/password or signal too weak");
+        else if (status == WL_DISCONNECTED || status == WL_IDLE_STATUS)
+            Serial.println("[WiFi] Disconnected — try restarting the router or ESP32");
+        else
+            Serial.printf("[WiFi] WiFi error code=%d\n", status);
+        Serial.printf("[WiFi] Please check: SSID=%s, Password=%s\n", _cfg.ssid, _cfg.password);
         return false;
     }
 
