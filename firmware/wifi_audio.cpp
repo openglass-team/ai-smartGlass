@@ -13,11 +13,12 @@ WifiAudio wifiAudio;
 bool WifiAudio::begin(const Config &cfg) {
     _cfg = cfg;
 
+    Serial.printf("[WiFi] 1/4 Setting mode...\n");
     WiFi.mode(WIFI_STA);
+    Serial.printf("[WiFi] 2/4 Begin connect to %s ...\n", _cfg.ssid);
     WiFi.begin(_cfg.ssid, _cfg.password);
 
-    Serial.printf("[WiFi] Connecting to %s ...\n", _cfg.ssid);
-
+    Serial.printf("[WiFi] 3/4 Waiting for IP...\n");
     unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
         delay(500);
@@ -25,12 +26,14 @@ bool WifiAudio::begin(const Config &cfg) {
     }
     Serial.println();
 
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("[WiFi] FAILED — continuing without WiFi");
+    int status = WiFi.status();
+    Serial.printf("[WiFi] 4/4 Status=%d\n", status);
+    if (status != WL_CONNECTED) {
+        Serial.printf("[WiFi] FAILED (status=%d) — SSID correct? Password correct?\n", status);
         return false;
     }
 
-    Serial.printf("[WiFi] Connected! IP = %s\n", WiFi.localIP().toString().c_str());
+    Serial.printf("[WiFi] Connected! IP=%s\n", WiFi.localIP().toString().c_str());
 
     _tcp = new WiFiClient();
     _reconnect();

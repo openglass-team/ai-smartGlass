@@ -436,24 +436,24 @@ void setup() {
   configure_camera();
   Serial.println("Camera started");
 
-  // 启动 WiFi TCP 音频桥接
+  // 先初始化骨传导喇叭，再启动WiFi（BoneSpeaker的I2S初始化耗时短）
+  if (speaker.begin(BoneSpeaker::Config())) {
+    speaker.mute();
+    delay(50);
+    speaker.mute();
+    Serial.println("BoneSpeaker OK (muted)");
+  } else {
+    Serial.println("BoneSpeaker FAILED");
+  }
+
+  // 启动 WiFi TCP 音频桥接（耗时较长，最后执行）
   {
     WifiAudio::Config wcfg;
     wcfg.ssid     = "S21";
     wcfg.password = "12345678";
     wcfg.host     = "192.168.2.5";
     wcfg.port     = 8888;
-    wifiAudio.begin(wcfg);  // WiFi TCP 音频桥接
-  }
-
-  // 启动骨传导喇叭（默认静音，TTS 触发时才发声）
-  if (speaker.begin(BoneSpeaker::Config())) {
-    speaker.mute();       // 软件静音
-    delay(50);            // 等 I2S DMA 稳定
-    speaker.mute();       // 二次确认静音
-    Serial.println("BoneSpeaker OK (muted)");
-  } else {
-    Serial.println("BoneSpeaker FAILED");
+    wifiAudio.begin(wcfg);
   }
 
   Serial.println("Setup complete");
