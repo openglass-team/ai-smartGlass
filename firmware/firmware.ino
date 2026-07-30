@@ -441,7 +441,7 @@ void setup() {
     WifiAudio::Config wcfg;
     wcfg.ssid     = "S21";
     wcfg.password = "12345678";
-    wcfg.host     = "192.168.2.3";
+    wcfg.host     = "192.168.2.5";
     wcfg.port     = 8888;
     wifiAudio.begin(wcfg);  // WiFi TCP 音频桥接
   }
